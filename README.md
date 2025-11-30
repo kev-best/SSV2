@@ -1,3 +1,16 @@
+
+How to Run, 
+
+Backend:
+1. Move Backend copy into different directory outside of project directory
+2. Then npm install
+3. Run with npm start
+
+Frontend:
+1. First run backend 
+2. open project in xcode and run simulator
+3. simulator should work with backend
+
 TODO 
 Fix sneaker errors in backend database, ensure only sneakers found appear on maintab, possibly bc of flightclub and stadium goods? 
 
