@@ -82,6 +82,15 @@ final class SneakAPIService {
         let dto = try jsonDecoder.decode(DetailResponse<SneakerDTO>.self, from: data).data
         return dto.toDomain()
     }
+    
+    /// Fetch products by specific brand (for category filtering)
+    func fetchProductsByBrand(brand: String, limit: Int = 20) async throws -> [SneakerSearchResult] {
+        // Fetch from both sources and combine
+        async let sx = fetchProducts(source: "stockx", brand: brand, limit: limit)
+        async let goat = fetchProducts(source: "goat", brand: brand, limit: limit)
+        let (a, b) = try await (sx, goat)
+        return interleave(a, b)
+    }
 
     // MARK: - Private
 

@@ -12,53 +12,73 @@ struct ProfileView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(UIColor.systemGroupedBackground)
-                    .ignoresSafeArea()
+                // Modern gradient background
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(UIColor.systemGroupedBackground),
+                        Color(UIColor.systemBackground)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 24) {
                         // Profile Header
-                        VStack(spacing: 15) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 80))
-                                .foregroundColor(.gray)
+                        VStack(spacing: 20) {
+                            // Avatar
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [Color.black, Color.gray]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 100, height: 100)
+                                
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 45))
+                                    .foregroundColor(.white)
+                            }
+                            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
                             
                             if let user = authManager.currentUser {
-                                Text(user.username)
-                                    .font(.title)
-                                    .fontWeight(.bold)
-                                
-                                Text("User ID: \(user.id)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                // Stats
-                                HStack(spacing: 40) {
-                                    VStack {
-                                        Text("\(user.likedSneakerStyleIDs.count)")
-                                            .font(.title2)
-                                            .fontWeight(.bold)
-                                        Text("Liked")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
+                                VStack(spacing: 6) {
+                                    Text(user.username)
+                                        .font(.system(size: 26, weight: .bold))
+                                    
+                                    Text("Member since \(formatDate())")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
                                 }
-                                .padding()
-                                .background(Color.white)
-                                .cornerRadius(10)
+                                
+                                // Stats Card
+                                HStack(spacing: 0) {
+                                    StatItem(
+                                        value: "\(user.likedSneakerStyleIDs.count)",
+                                        label: "Liked",
+                                        icon: "heart.fill"
+                                    )
+                                }
+                                .padding(.vertical, 20)
+                                .padding(.horizontal, 30)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color.white)
+                                        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+                                )
                             }
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.white)
-                        .cornerRadius(15)
-                        .padding(.horizontal)
-                        .padding(.top)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
                         
-                        // Options
+                        // Options Section
                         VStack(spacing: 0) {
-                            ProfileOptionRow(
-                                icon: "info.circle",
+                            ModernOptionRow(
+                                icon: "info.circle.fill",
                                 title: "About",
                                 iconColor: .blue
                             )
@@ -66,75 +86,123 @@ struct ProfileView: View {
                             Divider()
                                 .padding(.leading, 60)
                             
-                            ProfileOptionRow(
-                                icon: "gearshape",
+                            ModernOptionRow(
+                                icon: "gearshape.fill",
                                 title: "Settings",
                                 iconColor: .gray
                             )
                         }
                         .background(Color.white)
-                        .cornerRadius(15)
-                        .padding(.horizontal)
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        .padding(.horizontal, 20)
                         
                         // Logout Button
                         Button(action: {
                             showLogoutAlert = true
                         }) {
-                            HStack {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .foregroundColor(.red)
-                                Text("Logout")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.red)
+                            HStack(spacing: 10) {
+                                Image(systemName: "rectangle.portrait.and.arrow.right.fill")
+                                    .font(.system(size: 18))
+                                Text("Sign Out")
+                                    .font(.system(size: 16, weight: .semibold))
                             }
+                            .foregroundColor(.red)
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(10)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white)
+                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                            )
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, 20)
+                        
+                        // App Version
+                        Text("SoleSociety v1.0")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.6))
+                            .padding(.top, 20)
                         
                         Spacer()
                     }
+                    .padding(.vertical, 20)
                 }
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
-            .alert("Logout", isPresented: $showLogoutAlert) {
+            .alert("Sign Out", isPresented: $showLogoutAlert) {
                 Button("Cancel", role: .cancel) { }
-                Button("Logout", role: .destructive) {
+                Button("Sign Out", role: .destructive) {
                     authManager.logout()
                 }
             } message: {
-                Text("Are you sure you want to logout?")
+                Text("Are you sure you want to sign out?")
             }
         }
     }
+    
+    private func formatDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM yyyy"
+        return formatter.string(from: Date())
+    }
 }
 
-struct ProfileOptionRow: View {
+// Modern Option Row Component
+struct ModernOptionRow: View {
     let icon: String
     let title: String
     let iconColor: Color
     
     var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(iconColor)
-                .frame(width: 30)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.1))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(iconColor)
+            }
             
             Text(title)
-                .font(.body)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.primary)
             
             Spacer()
             
             Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.gray)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary.opacity(0.5))
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .contentShape(Rectangle())
+    }
+}
+
+// Stat Item Component
+struct StatItem: View {
+    let value: String
+    let label: String
+    let icon: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(.red.opacity(0.8))
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 28, weight: .bold))
+                Text(label)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+        }
     }
 }
 
@@ -144,4 +212,3 @@ struct ProfileView_Previews: PreviewProvider {
             .environmentObject(AuthManager())
     }
 }
-

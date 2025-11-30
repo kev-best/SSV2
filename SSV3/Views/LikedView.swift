@@ -12,41 +12,58 @@ struct LikedView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(UIColor.systemGroupedBackground)
-                    .ignoresSafeArea()
+                // Modern gradient background
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(UIColor.systemGroupedBackground),
+                        Color(UIColor.systemBackground)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
                 
                 if viewModel.isLoading {
-                    ProgressView()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Loading your collection...")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
                 } else if viewModel.likedSneakers.isEmpty {
                     VStack(spacing: 20) {
                         Image(systemName: "heart.slash")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                            .font(.system(size: 70, weight: .light))
+                            .foregroundColor(.gray.opacity(0.5))
                         
-                        Text("No Liked Sneakers")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.gray)
-                        
-                        Text("Start exploring and like sneakers to see them here!")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                        VStack(spacing: 8) {
+                            Text("No Liked Sneakers")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.primary)
+                            
+                            Text("Start exploring and like sneakers\nto build your collection!")
+                                .font(.system(size: 15))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(4)
+                        }
                     }
+                    .padding(.horizontal, 40)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: 15),
-                            GridItem(.flexible(), spacing: 15)
-                        ], spacing: 15) {
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16)
+                        ], spacing: 20) {
                             ForEach(viewModel.likedSneakers, id: \.styleID) { sneaker in
                                 NavigationLink(destination: SneakerDetailView(styleID: sneaker.styleID)) {
                                     LikedSneakerCard(sneaker: sneaker)
                                 }
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        .padding()
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
                     }
                 }
             }
@@ -83,18 +100,31 @@ class LikedViewModel: ObservableObject {
         
         // TODO: Replace with actual API calls when backend is ready
          Task {
-             var sneakers: [Sneaker] = []
-             for styleID in styleIDs {
-                 do {
-                     // Try stockx first, fallback to goat if needed
-                     let sneaker = try await apiService.getProductPrices(styleID: styleID, source: "stockx")
-                     sneakers.append(sneaker)
-                 } catch {
-                     print("Error loading sneaker \(styleID): \(error)")
+             // Use TaskGroup for concurrent loading with proper error handling
+             let results = await withTaskGroup(of: Sneaker?.self) { group in
+                 for styleID in styleIDs {
+                     group.addTask {
+                         do {
+                             // Try stockx first, fallback to goat if needed
+                             return try await self.apiService.getProductPrices(styleID: styleID, source: "stockx")
+                         } catch {
+                             print("Error loading sneaker \(styleID): \(error)")
+                             return nil
+                         }
+                     }
                  }
+                 
+                 var loadedSneakers: [Sneaker] = []
+                 for await result in group {
+                     if let sneaker = result {
+                         loadedSneakers.append(sneaker)
+                     }
+                 }
+                 return loadedSneakers
              }
+             
              await MainActor.run {
-                 self.likedSneakers = sneakers
+                 self.likedSneakers = results
                  self.isLoading = false
              }
          }
@@ -105,56 +135,95 @@ struct LikedSneakerCard: View {
     let sneaker: Sneaker
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Sneaker Image
-            AsyncImage(url: URL(string: sneaker.imageLinks.first ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } placeholder: {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay(
-                        Image(systemName: "photo")
-                            .foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 0) {
+            // Image Container
+            ZStack {
+                // Gradient background
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.gray.opacity(0.05),
+                                Color.gray.opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
+                
+                // Sneaker Image
+                AsyncImage(url: URL(string: sneaker.imageLinks.first ?? "")) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(height: 140)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 140)
+                            .padding(12)
+                    case .failure:
+                        VStack(spacing: 8) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 30))
+                                .foregroundColor(.gray.opacity(0.4))
+                        }
+                        .frame(height: 140)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
             }
-            .frame(height: 120)
-            .cornerRadius(10)
+            .frame(height: 140)
             
-            // Sneaker Info
-            VStack(alignment: .leading, spacing: 4) {
+            // Info Container
+            VStack(alignment: .leading, spacing: 6) {
+                // Sneaker Name
                 Text(sneaker.shoeName)
-                    .font(.caption)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(height: 36, alignment: .top)
                 
-                if let colorway = sneaker.colorway {
+                // Colorway
+                if let colorway = sneaker.colorway, !colorway.isEmpty {
                     Text(colorway)
-                        .font(.caption2)
+                        .font(.system(size: 11, weight: .regular))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
                 
-                if let lowestPrice = sneaker.lowestResellPrice?.stockX ?? sneaker.lowestResellPrice?.goat {
-                    Text("$\(lowestPrice)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
-                } else {
-                    Text("—")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
+                Spacer()
+                
+                // Price with heart indicator
+                HStack(alignment: .center, spacing: 4) {
+                    if let lowestPrice = sneaker.lowestResellPrice?.stockX ?? sneaker.lowestResellPrice?.goat {
+                        Text("$\(lowestPrice)")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.black)
+                    } else {
+                        Text("—")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.red.opacity(0.8))
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(height: 100)
         }
+        .frame(height: 240)
         .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 }
 
@@ -164,4 +233,3 @@ struct LikedView_Previews: PreviewProvider {
             .environmentObject(AuthManager())
     }
 }
-
