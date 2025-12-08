@@ -17,10 +17,10 @@ struct SneakerCardView: View {
                     .aspectRatio(contentMode: .fit)
             } placeholder: {
                 Rectangle()
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(AppTheme.cream)
                     .overlay(
                         Image(systemName: "photo")
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppTheme.primaryTan.opacity(0.4))
                     )
             }
             .frame(height: 120)
@@ -31,27 +31,27 @@ struct SneakerCardView: View {
                 Text(sneaker.shoeName)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.textOnLight)
                     .lineLimit(2)
                 
                 if let colorway = sneaker.colorway {
                     Text(colorway)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondaryOnLight)
                         .lineLimit(1)
                 }
                 
                 Text(sneaker.displayPrice)
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(.black)
+                    .foregroundColor(sneaker.displayPrice == "—" ? AppTheme.textSecondaryOnLight : AppTheme.textOnLight)
             }
             .padding(.horizontal, 8)
             .padding(.bottom, 8)
         }
         .background(Color.white)
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .shadow(color: AppTheme.primaryTan.opacity(0.12), radius: 5, x: 0, y: 2)
     }
 }
 

@@ -8,15 +8,17 @@ import SwiftUI
 struct LikedView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = LikedViewModel()
+    @State private var appearAnimation = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                // Modern gradient background
+                // Modern tan-themed gradient background
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(UIColor.systemGroupedBackground),
-                        Color(UIColor.systemBackground)
+                        AppTheme.cream,
+                        AppTheme.lightTan.opacity(0.3),
+                        AppTheme.cream
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -26,29 +28,32 @@ struct LikedView: View {
                 if viewModel.isLoading {
                     VStack(spacing: 12) {
                         ProgressView()
+                            .tint(AppTheme.accentTan)
                         Text("Loading your collection...")
                             .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondaryOnLight)
                     }
                 } else if viewModel.likedSneakers.isEmpty {
                     VStack(spacing: 20) {
                         Image(systemName: "heart.slash")
                             .font(.system(size: 70, weight: .light))
-                            .foregroundColor(.gray.opacity(0.5))
+                            .foregroundColor(AppTheme.primaryTan.opacity(0.5))
                         
                         VStack(spacing: 8) {
                             Text("No Liked Sneakers")
                                 .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.primary)
+                                .foregroundColor(AppTheme.textOnLight)
                             
                             Text("Start exploring and like sneakers\nto build your collection!")
                                 .font(.system(size: 15))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.textSecondaryOnLight)
                                 .multilineTextAlignment(.center)
                                 .lineSpacing(4)
                         }
                     }
                     .padding(.horizontal, 40)
+                    .opacity(appearAnimation ? 1 : 0)
+                    .offset(y: appearAnimation ? 0 : 20)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [
@@ -64,6 +69,7 @@ struct LikedView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
+                        .opacity(appearAnimation ? 1 : 0)
                     }
                 }
             }
@@ -72,6 +78,9 @@ struct LikedView: View {
             .onAppear {
                 if let userId = authManager.currentUser?.id {
                     viewModel.loadLikedSneakers(userId: userId)
+                }
+                withAnimation(.easeOut(duration: 0.6).delay(0.1)) {
+                    appearAnimation = true
                 }
             }
         }
@@ -149,8 +158,8 @@ struct LikedSneakerCard: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.gray.opacity(0.05),
-                                Color.gray.opacity(0.1)
+                                AppTheme.cream,
+                                AppTheme.lightTan.opacity(0.2)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -162,6 +171,7 @@ struct LikedSneakerCard: View {
                     switch phase {
                     case .empty:
                         ProgressView()
+                            .tint(AppTheme.accentTan)
                             .frame(height: 140)
                     case .success(let image):
                         image
@@ -173,7 +183,7 @@ struct LikedSneakerCard: View {
                         VStack(spacing: 8) {
                             Image(systemName: "photo")
                                 .font(.system(size: 30))
-                                .foregroundColor(.gray.opacity(0.4))
+                                .foregroundColor(AppTheme.primaryTan.opacity(0.4))
                         }
                         .frame(height: 140)
                     @unknown default:
@@ -188,7 +198,7 @@ struct LikedSneakerCard: View {
                 // Sneaker Name
                 Text(sneaker.shoeName)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.textOnLight)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(height: 36, alignment: .top)
@@ -197,7 +207,7 @@ struct LikedSneakerCard: View {
                 if let colorway = sneaker.colorway, !colorway.isEmpty {
                     Text(colorway)
                         .font(.system(size: 11, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondaryOnLight)
                         .lineLimit(1)
                 }
                 
@@ -208,11 +218,11 @@ struct LikedSneakerCard: View {
                     if let lowestPrice = sneaker.lowestResellPrice?.stockX ?? sneaker.lowestResellPrice?.goat {
                         Text("$\(lowestPrice)")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundColor(AppTheme.textOnLight)
                     } else {
                         Text("—")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppTheme.textSecondaryOnLight)
                     }
                     
                     Spacer()
@@ -229,7 +239,7 @@ struct LikedSneakerCard: View {
         .frame(height: 240)
         .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .shadow(color: AppTheme.primaryTan.opacity(0.12), radius: 12, x: 0, y: 4)
     }
 }
 

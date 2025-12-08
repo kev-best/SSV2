@@ -17,15 +17,17 @@ struct SearchView: View {
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
     @State private var selectedSource: SearchSource = .both
+    @State private var appearAnimation = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                // Modern gradient background
+                // Modern tan-themed gradient background
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(UIColor.systemGroupedBackground),
-                        Color(UIColor.systemBackground)
+                        AppTheme.cream,
+                        AppTheme.lightTan.opacity(0.3),
+                        AppTheme.cream
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -56,12 +58,14 @@ struct SearchView: View {
                             .padding(.horizontal, 20)
                         }
                         .padding(.top, 8)
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : -10)
                         
                         // Modern Search Bar
                         HStack(spacing: 12) {
                             HStack(spacing: 10) {
                                 Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(AppTheme.accentTan)
                                     .font(.system(size: 16, weight: .medium))
                                 
                                 TextField("Search sneakers...", text: $searchText, onCommit: {
@@ -77,7 +81,7 @@ struct SearchView: View {
                                         viewModel.clearSearch()
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.gray.opacity(0.6))
+                                            .foregroundColor(AppTheme.primaryTan)
                                             .font(.system(size: 16))
                                     }
                                 }
@@ -87,7 +91,11 @@ struct SearchView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                    .shadow(color: AppTheme.primaryTan.opacity(0.15), radius: 8, x: 0, y: 2)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(AppTheme.primaryTan.opacity(0.2), lineWidth: 1)
                             )
                             
                             if isSearchFocused {
@@ -96,13 +104,15 @@ struct SearchView: View {
                                     viewModel.clearSearch()
                                     isSearchFocused = false
                                 }
-                                .font(.system(size: 16))
-                                .foregroundColor(.black)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(AppTheme.accentTan)
                                 .transition(.move(edge: .trailing).combined(with: .opacity))
                             }
                         }
                         .padding(.horizontal, 20)
                         .animation(.easeInOut(duration: 0.2), value: isSearchFocused)
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : -10)
                         
                         // Category Filter (only show when not searching)
                         if !viewModel.isSearching {
@@ -121,22 +131,27 @@ struct SearchView: View {
                                 .padding(.horizontal, 20)
                             }
                             .padding(.vertical, 8)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -10)
                         }
                         
                         // Content based on loading state and source
                         if viewModel.isLoading {
                             VStack(spacing: 12) {
                                 ProgressView()
+                                    .tint(AppTheme.accentTan)
                                 Text("Loading sneakers...")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(AppTheme.textSecondaryOnLight)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 60)
                         } else if viewModel.isSearching {
                             searchResultsContent
+                                .opacity(appearAnimation ? 1 : 0)
                         } else {
                             popularContent
+                                .opacity(appearAnimation ? 1 : 0)
                         }
                     }
                     .padding(.vertical, 12)
@@ -152,6 +167,11 @@ struct SearchView: View {
             }
             viewModel.selectedSource = selectedSource
             viewModel.loadPopularSneakers()
+            
+            // Trigger appearance animation
+            withAnimation(.easeOut(duration: 0.6).delay(0.1)) {
+                appearAnimation = true
+            }
         }
     }
     
@@ -240,10 +260,11 @@ struct SearchView: View {
             }
             Text(title)
                 .font(.system(size: 24, weight: .bold))
+                .foregroundColor(AppTheme.textOnLight)
             Spacer()
             Text("\(count) found")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondaryOnLight)
         }
         .padding(.horizontal, 20)
     }
@@ -253,13 +274,13 @@ struct SearchView: View {
         VStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 50))
-                .foregroundColor(.gray.opacity(0.5))
+                .foregroundColor(AppTheme.primaryTan.opacity(0.5))
             Text("No results found")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondaryOnLight)
             Text("Try different keywords")
                 .font(.system(size: 14))
-                .foregroundColor(.secondary.opacity(0.7))
+                .foregroundColor(AppTheme.textSecondaryOnLight.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)
@@ -292,13 +313,17 @@ struct SourceTabButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 15, weight: isSelected ? .bold : .semibold))
-                .foregroundColor(isSelected ? .white : .primary)
+                .foregroundColor(isSelected ? .white : AppTheme.textOnLight)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.black : Color.white)
-                        .shadow(color: Color.black.opacity(isSelected ? 0.2 : 0.08), radius: 8, x: 0, y: 2)
+                        .fill(isSelected ? AppTheme.accentDark : Color.white)
+                        .shadow(color: AppTheme.primaryTan.opacity(isSelected ? 0.3 : 0.15), radius: 8, x: 0, y: 2)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.clear : AppTheme.primaryTan.opacity(0.2), lineWidth: 1)
                 )
         }
         .buttonStyle(PlainButtonStyle())
@@ -318,8 +343,8 @@ struct ModernSneakerCard: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.gray.opacity(0.05),
-                                Color.gray.opacity(0.1)
+                                AppTheme.cream,
+                                AppTheme.lightTan.opacity(0.2)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -331,6 +356,7 @@ struct ModernSneakerCard: View {
                     switch phase {
                     case .empty:
                         ProgressView()
+                            .tint(AppTheme.accentTan)
                             .frame(height: 140)
                     case .success(let image):
                         image
@@ -342,7 +368,7 @@ struct ModernSneakerCard: View {
                         VStack(spacing: 8) {
                             Image(systemName: "photo")
                                 .font(.system(size: 30))
-                                .foregroundColor(.gray.opacity(0.4))
+                                .foregroundColor(AppTheme.primaryTan.opacity(0.4))
                         }
                         .frame(height: 140)
                     @unknown default:
@@ -376,13 +402,13 @@ struct ModernSneakerCard: View {
                 HStack(alignment: .center, spacing: 4) {
                     Text(sneaker.displayPrice)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(sneaker.displayPrice == "—" ? .gray : .black)
+                        .foregroundColor(sneaker.displayPrice == "—" ? AppTheme.textSecondaryOnLight : AppTheme.textOnLight)
                     
                     Spacer()
                     
                     Image(systemName: "arrow.right.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(.black.opacity(0.6))
+                        .foregroundColor(AppTheme.accentTan)
                 }
             }
             .padding(.horizontal, 14)
@@ -392,7 +418,7 @@ struct ModernSneakerCard: View {
         .frame(height: 240)
         .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .shadow(color: AppTheme.primaryTan.opacity(0.12), radius: 12, x: 0, y: 4)
     }
 }
 
@@ -563,13 +589,17 @@ struct CategoryChip: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
-                .foregroundColor(isSelected ? .white : .primary)
+                .foregroundColor(isSelected ? .white : AppTheme.textOnLight)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.black : Color.white)
-                        .shadow(color: Color.black.opacity(isSelected ? 0.15 : 0.08), radius: 8, x: 0, y: 2)
+                        .fill(isSelected ? AppTheme.accentTan : Color.white)
+                        .shadow(color: AppTheme.primaryTan.opacity(isSelected ? 0.25 : 0.12), radius: 8, x: 0, y: 2)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.clear : AppTheme.primaryTan.opacity(0.25), lineWidth: 1)
                 )
         }
         .buttonStyle(PlainButtonStyle())

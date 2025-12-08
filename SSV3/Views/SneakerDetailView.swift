@@ -9,6 +9,8 @@ struct SneakerDetailView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel: SneakerDetailViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var currentImageIndex = 0
+    @State private var appearAnimation = false
     
     init(styleID: String, source: String = "stockx") {
         _viewModel = StateObject(wrappedValue: SneakerDetailViewModel(styleID: styleID, source: source))
@@ -16,30 +18,40 @@ struct SneakerDetailView: View {
     
     var body: some View {
         ZStack {
-            Color(UIColor.systemGroupedBackground)
-                .ignoresSafeArea()
+            // Themed gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    AppTheme.cream,
+                    AppTheme.lightTan.opacity(0.2),
+                    AppTheme.cream
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             
             if viewModel.isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
+                        .tint(AppTheme.accentTan)
                     Text("Loading sneaker details...")
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondaryOnLight)
                 }
             } else if let errorMessage = viewModel.errorMessage {
                 VStack(spacing: 24) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 70, weight: .light))
-                        .foregroundColor(.orange.opacity(0.8))
+                        .foregroundColor(AppTheme.primaryTan)
                     
                     VStack(spacing: 8) {
                         Text("Oops!")
                             .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(AppTheme.textOnLight)
                         
                         Text(errorMessage)
                             .font(.system(size: 15))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondaryOnLight)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                     }
@@ -51,7 +63,7 @@ struct SneakerDetailView: View {
                     }
                     .padding(.horizontal, 40)
                     .padding(.vertical, 14)
-                    .background(Color.black)
+                    .background(AppTheme.accentDark)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                     .font(.system(size: 16, weight: .semibold))
@@ -60,50 +72,75 @@ struct SneakerDetailView: View {
             } else if let sneaker = viewModel.sneaker {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Image Gallery
-                        ZStack {
+                        // Image Gallery with improved carousel
+                        ZStack(alignment: .bottom) {
                             Rectangle()
                                 .fill(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            Color.gray.opacity(0.08),
-                                            Color.gray.opacity(0.02)
+                                            Color.white,
+                                            AppTheme.cream
                                         ]),
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
                                 )
                             
-                            TabView {
-                                ForEach(sneaker.imageLinks, id: \.self) { imageUrl in
+                            TabView(selection: $currentImageIndex) {
+                                ForEach(Array(sneaker.imageLinks.enumerated()), id: \.offset) { index, imageUrl in
                                     AsyncImage(url: URL(string: imageUrl)) { phase in
                                         switch phase {
                                         case .empty:
                                             ProgressView()
+                                                .tint(AppTheme.accentTan)
                                         case .success(let image):
                                             image
                                                 .resizable()
                                                 .aspectRatio(contentMode: .fit)
-                                                .padding(20)
+                                                .padding(.horizontal, 24)
+                                                .padding(.top, 60)
+                                                .padding(.bottom, 40)
                                         case .failure:
                                             VStack(spacing: 12) {
                                                 Image(systemName: "photo")
                                                     .font(.system(size: 50))
-                                                    .foregroundColor(.gray.opacity(0.4))
+                                                    .foregroundColor(AppTheme.primaryTan.opacity(0.4))
                                                 Text("Image unavailable")
                                                     .font(.caption)
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(AppTheme.textSecondaryOnLight)
                                             }
                                         @unknown default:
                                             EmptyView()
                                         }
                                     }
+                                    .tag(index)
                                 }
                             }
-                            .frame(height: 320)
-                            .tabViewStyle(PageTabViewStyle())
+                            .frame(height: 350)
+                            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                            
+                            // Custom page indicator dots
+                            if sneaker.imageLinks.count > 1 {
+                                HStack(spacing: 8) {
+                                    ForEach(0..<sneaker.imageLinks.count, id: \.self) { index in
+                                        Circle()
+                                            .fill(index == currentImageIndex ? AppTheme.accentTan : AppTheme.primaryTan.opacity(0.3))
+                                            .frame(width: index == currentImageIndex ? 10 : 8, height: index == currentImageIndex ? 10 : 8)
+                                            .animation(.easeInOut(duration: 0.2), value: currentImageIndex)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(AppTheme.accentDark.opacity(0.7))
+                                )
+                                .padding(.bottom, 16)
+                            }
                         }
-                        .frame(height: 320)
+                        .frame(height: 350)
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : -20)
                         
                         // Content Container
                         VStack(alignment: .leading, spacing: 20) {
@@ -111,6 +148,7 @@ struct SneakerDetailView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(sneaker.shoeName)
                                     .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(AppTheme.textOnLight)
                                     .lineSpacing(2)
                                 
                                 HStack(spacing: 6) {
@@ -120,22 +158,25 @@ struct SneakerDetailView: View {
                                             .foregroundColor(.white)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 4)
-                                            .background(Color.black)
+                                            .background(AppTheme.accentDark)
                                             .cornerRadius(6)
                                     }
                                     
                                     if let colorway = sneaker.colorway {
                                         Text(colorway)
                                             .font(.system(size: 13, weight: .medium))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(AppTheme.textSecondaryOnLight)
                                     }
                                 }
                             }
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 10)
                             
                             // Pricing Section
                             VStack(alignment: .leading, spacing: 16) {
                                 Text("Pricing")
                                     .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(AppTheme.textOnLight)
                                 
                                 // Retail Price
                                 if let retailPrice = sneaker.retailPrice {
@@ -143,18 +184,20 @@ struct SneakerDetailView: View {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text("Retail Price")
                                                 .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(AppTheme.textSecondaryOnLight)
                                             Text("$\(retailPrice)")
                                                 .font(.system(size: 22, weight: .bold))
+                                                .foregroundColor(AppTheme.textOnLight)
                                         }
                                         Spacer()
                                         Image(systemName: "tag.fill")
                                             .font(.system(size: 24))
-                                            .foregroundColor(.black.opacity(0.2))
+                                            .foregroundColor(AppTheme.primaryTan.opacity(0.4))
                                     }
                                     .padding()
                                     .background(Color.white)
                                     .cornerRadius(12)
+                                    .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
                                 }
                                 
                                 // StockX Min/Max Pricing
@@ -163,11 +206,12 @@ struct SneakerDetailView: View {
                                         HStack {
                                             Text("StockX")
                                                 .font(.system(size: 15, weight: .semibold))
+                                                .foregroundColor(AppTheme.textOnLight)
                                             Spacer()
                                             if let link = sneaker.resellLinks?.stockX {
                                                 Link(destination: URL(string: link)!) {
                                                     Image(systemName: "arrow.up.right.square.fill")
-                                                        .foregroundColor(.black.opacity(0.5))
+                                                        .foregroundColor(AppTheme.accentTan)
                                                         .font(.system(size: 18))
                                                 }
                                             }
@@ -179,7 +223,7 @@ struct SneakerDetailView: View {
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Lowest Ask")
                                                         .font(.system(size: 12))
-                                                        .foregroundColor(.secondary)
+                                                        .foregroundColor(AppTheme.textSecondaryOnLight)
                                                     Text("$\(minPrice)")
                                                         .font(.system(size: 20, weight: .bold))
                                                         .foregroundColor(.green)
@@ -192,7 +236,7 @@ struct SneakerDetailView: View {
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Highest Ask")
                                                         .font(.system(size: 12))
-                                                        .foregroundColor(.secondary)
+                                                        .foregroundColor(AppTheme.textSecondaryOnLight)
                                                     Text("$\(maxPrice)")
                                                         .font(.system(size: 20, weight: .bold))
                                                         .foregroundColor(.red.opacity(0.8))
@@ -204,6 +248,7 @@ struct SneakerDetailView: View {
                                     .padding()
                                     .background(Color.white)
                                     .cornerRadius(12)
+                                    .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
                                 }
                                 
                                 // GOAT Size-Specific Pricing
@@ -212,11 +257,12 @@ struct SneakerDetailView: View {
                                         HStack {
                                             Text("GOAT")
                                                 .font(.system(size: 15, weight: .semibold))
+                                                .foregroundColor(AppTheme.textOnLight)
                                             Spacer()
                                             if let link = sneaker.resellLinks?.goat {
                                                 Link(destination: URL(string: link)!) {
                                                     Image(systemName: "arrow.up.right.square.fill")
-                                                        .foregroundColor(.black.opacity(0.5))
+                                                        .foregroundColor(AppTheme.accentTan)
                                                         .font(.system(size: 18))
                                                 }
                                             }
@@ -231,6 +277,7 @@ struct SneakerDetailView: View {
                                     .padding()
                                     .background(Color.white)
                                     .cornerRadius(12)
+                                    .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
                                 } else if sneaker.stockXMinPrice == nil && sneaker.stockXMaxPrice == nil && sneaker.resellPrices.isEmpty {
                                     // No pricing available from either source
                                     VStack(alignment: .leading, spacing: 12) {
@@ -238,15 +285,15 @@ struct SneakerDetailView: View {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text("Resale Pricing")
                                                     .font(.system(size: 13))
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(AppTheme.textSecondaryOnLight)
                                                 Text("Not Available")
                                                     .font(.system(size: 16, weight: .medium))
-                                                    .foregroundColor(.orange)
+                                                    .foregroundColor(AppTheme.accentTan)
                                             }
                                             Spacer()
                                             Image(systemName: "exclamationmark.circle")
                                                 .font(.system(size: 24))
-                                                .foregroundColor(.orange.opacity(0.6))
+                                                .foregroundColor(AppTheme.primaryTan.opacity(0.6))
                                         }
                                         
                                         // Show link to visit website
@@ -255,20 +302,22 @@ struct SneakerDetailView: View {
                                                 HStack {
                                                     Text("Visit \(sneaker.source == .stockx ? "StockX" : "GOAT") for pricing")
                                                         .font(.system(size: 14, weight: .medium))
-                                                        .foregroundColor(.blue)
+                                                        .foregroundColor(AppTheme.accentTan)
                                                     Image(systemName: "arrow.up.right")
                                                         .font(.system(size: 12))
-                                                        .foregroundColor(.blue)
+                                                        .foregroundColor(AppTheme.accentTan)
                                                 }
                                             }
                                             .padding(.top, 4)
                                         }
                                     }
                                     .padding()
-                                    .background(Color.orange.opacity(0.1))
+                                    .background(AppTheme.primaryTan.opacity(0.1))
                                     .cornerRadius(12)
                                 }
                             }
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 10)
                             
                             // Details Section
                             VStack(alignment: .leading, spacing: 12) {
@@ -278,21 +327,27 @@ struct SneakerDetailView: View {
                                 
                                 DetailRow(icon: "tag", label: "Style ID", value: sneaker.styleID)
                             }
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 10)
                             
                             // Description
                             if let description = sneaker.description {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("About")
                                         .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(AppTheme.textOnLight)
                                     
                                     Text(description)
                                         .font(.system(size: 15))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(AppTheme.textSecondaryOnLight)
                                         .lineSpacing(4)
                                 }
                                 .padding()
                                 .background(Color.white)
                                 .cornerRadius(12)
+                                .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
+                                .opacity(appearAnimation ? 1 : 0)
+                                .offset(y: appearAnimation ? 0 : 10)
                             }
                             
                             // Like Button
@@ -307,21 +362,23 @@ struct SneakerDetailView: View {
                                 HStack(spacing: 10) {
                                     Image(systemName: viewModel.isLiked ? "heart.fill" : "heart")
                                         .font(.system(size: 20))
-                                        .foregroundColor(viewModel.isLiked ? .red : .black)
+                                        .foregroundColor(viewModel.isLiked ? .red : AppTheme.accentTan)
                                     Text(viewModel.isLiked ? "Saved to Liked" : "Add to Liked")
                                         .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(viewModel.isLiked ? .red : .black)
+                                        .foregroundColor(viewModel.isLiked ? .red : AppTheme.textOnLight)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
                                 .background(
                                     viewModel.isLiked
                                     ? Color.red.opacity(0.1)
-                                    : Color.black.opacity(0.05)
+                                    : AppTheme.primaryTan.opacity(0.15)
                                 )
                                 .cornerRadius(12)
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 15)
                         }
                         .padding(20)
                     }
@@ -331,16 +388,16 @@ struct SneakerDetailView: View {
                 VStack(spacing: 20) {
                     Image(systemName: "questionmark.circle")
                         .font(.system(size: 70, weight: .light))
-                        .foregroundColor(.gray.opacity(0.5))
+                        .foregroundColor(AppTheme.primaryTan.opacity(0.5))
                     
                     VStack(spacing: 8) {
                         Text("Sneaker Not Found")
                             .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(AppTheme.textOnLight)
                         
                         Text("This sneaker couldn't be loaded")
                             .font(.system(size: 15))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondaryOnLight)
                     }
                 }
             }
@@ -349,6 +406,10 @@ struct SneakerDetailView: View {
         .onAppear {
             if let userId = authManager.currentUser?.id {
                 viewModel.loadSneaker(userId: userId)
+            }
+            // Trigger appearance animation
+            withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
+                appearAnimation = true
             }
         }
     }
@@ -403,22 +464,23 @@ struct DetailRow: View {
                 HStack(spacing: 12) {
                     Image(systemName: icon)
                         .font(.system(size: 16))
-                        .foregroundColor(.black.opacity(0.6))
+                        .foregroundColor(AppTheme.accentTan)
                         .frame(width: 24)
                     
                     Text(label)
                         .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondaryOnLight)
                     
                     Spacer()
                     
                     Text(value)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.textOnLight)
                 }
                 .padding()
                 .background(Color.white)
                 .cornerRadius(12)
+                .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
             }
         }
         
@@ -520,10 +582,10 @@ struct SizePriceSelector: View {
                         HStack {
                             Image(systemName: "star.fill")
                                 .font(.system(size: 12))
-                                .foregroundColor(.orange)
+                                .foregroundColor(AppTheme.accentTan)
                             Text("Your size: US \(userSize)")
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.textSecondaryOnLight)
                             Spacer()
                         }
                         .padding(.horizontal, 4)
@@ -532,7 +594,7 @@ struct SizePriceSelector: View {
                     // Search bar for size
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppTheme.accentTan)
                             .font(.system(size: 14))
                         
                         TextField("Search size...", text: $searchSize)
@@ -543,21 +605,21 @@ struct SizePriceSelector: View {
                         if !searchSize.isEmpty {
                             Button(action: { searchSize = "" }) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray.opacity(0.6))
+                                    .foregroundColor(AppTheme.primaryTan)
                                     .font(.system(size: 14))
                             }
                         }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.gray.opacity(0.05))
+                    .background(AppTheme.cream)
                     .cornerRadius(8)
                     
                     // Sizes list with ScrollViewReader to scroll to user's size
                     if filteredSizes.isEmpty {
                         Text("No sizes found")
                             .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondaryOnLight)
                             .padding(.vertical, 20)
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
@@ -604,7 +666,7 @@ struct SizePriceRow: View {
                     // Size
                     Text("US \(size)")
                         .font(.system(size: 15, weight: isUserSize ? .semibold : .regular))
-                        .foregroundColor(isUserSize ? .white : .primary)
+                        .foregroundColor(isUserSize ? .white : AppTheme.textOnLight)
                     
                     if isUserSize {
                         Image(systemName: "star.fill")
@@ -617,17 +679,17 @@ struct SizePriceRow: View {
                     // Price
                     Text("$\(price)")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(isUserSize ? .white : .black)
+                        .foregroundColor(isUserSize ? .white : AppTheme.textOnLight)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isUserSize ? Color.black : Color.gray.opacity(0.05))
+                        .fill(isUserSize ? AppTheme.accentDark : AppTheme.cream)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(isUserSize ? Color.black : Color.clear, lineWidth: 2)
+                        .stroke(isUserSize ? AppTheme.accentDark : Color.clear, lineWidth: 2)
                 )
             }
         }

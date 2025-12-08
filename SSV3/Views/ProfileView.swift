@@ -8,15 +8,17 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showLogoutAlert = false
+    @State private var appearAnimation = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                // Modern gradient background
+                // Modern tan-themed gradient background
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(UIColor.systemGroupedBackground),
-                        Color(UIColor.systemBackground)
+                        AppTheme.cream,
+                        AppTheme.lightTan.opacity(0.3),
+                        AppTheme.cream
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -32,7 +34,7 @@ struct ProfileView: View {
                                 Circle()
                                     .fill(
                                         LinearGradient(
-                                            gradient: Gradient(colors: [Color.black, Color.gray]),
+                                            gradient: Gradient(colors: [AppTheme.accentDark, AppTheme.accentTan]),
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -43,16 +45,17 @@ struct ProfileView: View {
                                     .font(.system(size: 45))
                                     .foregroundColor(.white)
                             }
-                            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                            .shadow(color: AppTheme.primaryTan.opacity(0.3), radius: 10, x: 0, y: 5)
                             
                             if let user = authManager.currentUser {
                                 VStack(spacing: 6) {
                                     Text(user.username)
                                         .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(AppTheme.textOnLight)
                                     
                                     Text("Member since \(formatDate())")
                                         .font(.system(size: 13))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(AppTheme.textSecondaryOnLight)
                                 }
                                 
                                 // Stats Card
@@ -68,23 +71,26 @@ struct ProfileView: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 16)
                                         .fill(Color.white)
-                                        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+                                        .shadow(color: AppTheme.primaryTan.opacity(0.12), radius: 10, x: 0, y: 4)
                                 )
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : -15)
                         
                         // Shoe Size Section
                         if let user = authManager.currentUser {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
                                     Image(systemName: "ruler.fill")
-                                        .foregroundColor(.black.opacity(0.7))
+                                        .foregroundColor(AppTheme.accentTan)
                                         .font(.system(size: 16))
                                     
                                     Text("My Shoe Size")
                                         .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(AppTheme.textOnLight)
                                     
                                     Spacer()
                                 }
@@ -97,8 +103,10 @@ struct ProfileView: View {
                             .padding()
                             .background(Color.white)
                             .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                            .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
                             .padding(.horizontal, 20)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 10)
                         }
                         
                         // Options Section
@@ -106,7 +114,7 @@ struct ProfileView: View {
                             ModernOptionRow(
                                 icon: "info.circle.fill",
                                 title: "About",
-                                iconColor: .blue
+                                iconColor: AppTheme.accentTan
                             )
                             
                             Divider()
@@ -115,13 +123,15 @@ struct ProfileView: View {
                             ModernOptionRow(
                                 icon: "gearshape.fill",
                                 title: "Settings",
-                                iconColor: .gray
+                                iconColor: AppTheme.textSecondaryOnLight
                             )
                         }
                         .background(Color.white)
                         .cornerRadius(16)
-                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
                         .padding(.horizontal, 20)
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : 10)
                         
                         // Logout Button
                         Button(action: {
@@ -139,15 +149,17 @@ struct ProfileView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                    .shadow(color: AppTheme.primaryTan.opacity(0.1), radius: 8, x: 0, y: 2)
                             )
                         }
                         .padding(.horizontal, 20)
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : 10)
                         
                         // App Version
                         Text("SoleSociety v1.0")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary.opacity(0.6))
+                            .foregroundColor(AppTheme.textSecondaryOnLight.opacity(0.6))
                             .padding(.top, 20)
                         
                         Spacer()
@@ -164,6 +176,11 @@ struct ProfileView: View {
                 }
             } message: {
                 Text("Are you sure you want to sign out?")
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.6).delay(0.1)) {
+                    appearAnimation = true
+                }
             }
         }
     }
@@ -195,13 +212,13 @@ struct ModernOptionRow: View {
             
             Text(title)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
+                .foregroundColor(AppTheme.textOnLight)
             
             Spacer()
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.secondary.opacity(0.5))
+                .foregroundColor(AppTheme.textSecondaryOnLight.opacity(0.5))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -224,9 +241,10 @@ struct StatItem: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(value)
                     .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(AppTheme.textOnLight)
                 Text(label)
                     .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.textSecondaryOnLight)
             }
         }
     }
@@ -256,7 +274,7 @@ struct ShoeSizePickerView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Set your preferred shoe size to see personalized pricing")
                 .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textSecondaryOnLight)
             
             Menu {
                 ForEach(shoeSizes, id: \.self) { size in
@@ -276,16 +294,16 @@ struct ShoeSizePickerView: View {
                 HStack {
                     Text("US \(selectedSize)")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.textOnLight)
                     
                     Spacer()
                     
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.accentTan)
                 }
                 .padding()
-                .background(Color.gray.opacity(0.05))
+                .background(AppTheme.cream)
                 .cornerRadius(10)
             }
         }
