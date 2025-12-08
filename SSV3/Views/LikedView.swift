@@ -98,18 +98,24 @@ class LikedViewModel: ObservableObject {
 //            self.isLoading = false
 //        }
         
-        // TODO: Replace with actual API calls when backend is ready
+        // Load liked sneakers from API
          Task {
              // Use TaskGroup for concurrent loading with proper error handling
              let results = await withTaskGroup(of: Sneaker?.self) { group in
                  for styleID in styleIDs {
                      group.addTask {
                          do {
-                             // Try stockx first, fallback to goat if needed
-                             return try await self.apiService.getProductPrices(styleID: styleID, source: "stockx")
+                             // Try GOAT first (has more details)
+                             return try await self.apiService.getGoatProduct(slug: styleID)
                          } catch {
-                             print("Error loading sneaker \(styleID): \(error)")
-                             return nil
+                             print("⚠️ GOAT failed for \(styleID), trying StockX: \(error)")
+                             // Fallback to StockX
+                             do {
+                                 return try await self.apiService.getStockXProduct(slug: styleID)
+                             } catch {
+                                 print("❌ Both APIs failed for \(styleID): \(error)")
+                                 return nil
+                             }
                          }
                      }
                  }

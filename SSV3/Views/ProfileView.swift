@@ -75,6 +75,32 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
                         
+                        // Shoe Size Section
+                        if let user = authManager.currentUser {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Image(systemName: "ruler.fill")
+                                        .foregroundColor(.black.opacity(0.7))
+                                        .font(.system(size: 16))
+                                    
+                                    Text("My Shoe Size")
+                                        .font(.system(size: 16, weight: .semibold))
+                                    
+                                    Spacer()
+                                }
+                                
+                                ShoeSizePickerView(
+                                    currentSize: user.shoeSize,
+                                    userId: user.id
+                                )
+                            }
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                            .padding(.horizontal, 20)
+                        }
+                        
                         // Options Section
                         VStack(spacing: 0) {
                             ModernOptionRow(
@@ -203,6 +229,71 @@ struct StatItem: View {
                     .foregroundColor(.secondary)
             }
         }
+    }
+}
+
+// MARK: - Shoe Size Picker Component
+
+struct ShoeSizePickerView: View {
+    let currentSize: String?
+    let userId: String
+    
+    @State private var selectedSize: String
+    @EnvironmentObject var authManager: AuthManager
+    
+    private let shoeSizes = [
+        "6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5",
+        "10", "10.5", "11", "11.5", "12", "12.5", "13", "13.5", "14", "15"
+    ]
+    
+    init(currentSize: String?, userId: String) {
+        self.currentSize = currentSize
+        self.userId = userId
+        _selectedSize = State(initialValue: currentSize ?? "10")
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Set your preferred shoe size to see personalized pricing")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+            
+            Menu {
+                ForEach(shoeSizes, id: \.self) { size in
+                    Button(action: {
+                        selectedSize = size
+                        updateShoeSize(size)
+                    }) {
+                        HStack {
+                            Text("US \(size)")
+                            if size == selectedSize {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("US \(selectedSize)")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color.gray.opacity(0.05))
+                .cornerRadius(10)
+            }
+        }
+    }
+    
+    private func updateShoeSize(_ size: String) {
+        DatabaseManager.shared.updateShoeSize(userId: userId, size: size)
+        authManager.refreshCurrentUser()
     }
 }
 

@@ -1,59 +1,64 @@
-//
-//  AuthManager.swift
-//  SoleSociety
-//
-
 import Foundation
-import SwiftUI
+import Combine
 
 class AuthManager: ObservableObject {
-    @Published var isLoggedIn = false
     @Published var currentUser: User?
+    @Published var isAuthenticated = false
     
     private let db = DatabaseManager.shared
+    private let persistence = PersistenceManager.shared
     
     init() {
-        checkLoginStatus()
-    }
-    
-    func checkLoginStatus() {
-        if let user = db.getCurrentUser() {
-            currentUser = user
-            isLoggedIn = true
-        }
+        // Load saved state on app launch
+        restoreSession()
     }
     
     func login(username: String, password: String) -> Bool {
-        if let user = db.authenticateUser(username: username, password: password) {
-            db.setCurrentUser(user)
-            currentUser = user
-            isLoggedIn = true
-            return true
+        guard let user = db.getUser(username: username, password: password) else {
+            return false
         }
-        return false
+        
+        currentUser = user
+        isAuthenticated = true
+        
+        // Save login state
+        persistence.saveCurrentUserID(user.id)
+        
+        return true
     }
     
     func register(username: String, password: String) -> Bool {
-        if let user = db.createUser(username: username, password: password) {
-            db.setCurrentUser(user)
+        let user = User(username: username, password: password)
+        let success = db.createUser(user)
+        
+        if success {
             currentUser = user
-            isLoggedIn = true
-            return true
+            isAuthenticated = true
+            persistence.saveCurrentUserID(user.id)
         }
-        return false
+        
+        return success
     }
     
     func logout() {
-        db.clearCurrentUser()
         currentUser = nil
-        isLoggedIn = false
+        isAuthenticated = false
+        persistence.clearCurrentUser()
     }
     
     func refreshCurrentUser() {
-        if let userId = currentUser?.id {
-            let users = db.getUsers()
-            currentUser = users.first { $0.id == userId }
+        guard let userId = currentUser?.id else { return }
+        currentUser = db.getUserById(userId)
+    }
+    
+    // Restore session on app launch
+    private func restoreSession() {
+        guard let userId = persistence.loadCurrentUserID(),
+              let user = db.getUserById(userId) else {
+            return
         }
+        
+        currentUser = user
+        isAuthenticated = true
     }
 }
-

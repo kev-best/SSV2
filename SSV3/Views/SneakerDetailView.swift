@@ -10,8 +10,8 @@ struct SneakerDetailView: View {
     @StateObject private var viewModel: SneakerDetailViewModel
     @Environment(\.dismiss) private var dismiss
     
-    init(styleID: String) {
-        _viewModel = StateObject(wrappedValue: SneakerDetailViewModel(styleID: styleID))
+    init(styleID: String, source: String = "stockx") {
+        _viewModel = StateObject(wrappedValue: SneakerDetailViewModel(styleID: styleID, source: source))
     }
     
     var body: some View {
@@ -132,11 +132,12 @@ struct SneakerDetailView: View {
                                 }
                             }
                             
-                            // Price Card
+                            // Pricing Section
                             VStack(alignment: .leading, spacing: 16) {
                                 Text("Pricing")
                                     .font(.system(size: 18, weight: .bold))
                                 
+                                // Retail Price
                                 if let retailPrice = sneaker.retailPrice {
                                     HStack {
                                         VStack(alignment: .leading, spacing: 4) {
@@ -156,28 +157,115 @@ struct SneakerDetailView: View {
                                     .cornerRadius(12)
                                 }
                                 
-                                if let lowestResell = sneaker.lowestResellPrice {
-                                    VStack(spacing: 0) {
-                                        if let stockx = lowestResell.stockX {
-                                            ModernPriceRow(site: "StockX", price: stockx, link: sneaker.resellLinks?.stockX)
+                                // StockX Min/Max Pricing
+                                if sneaker.stockXMinPrice != nil || sneaker.stockXMaxPrice != nil {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        HStack {
+                                            Text("StockX")
+                                                .font(.system(size: 15, weight: .semibold))
+                                            Spacer()
+                                            if let link = sneaker.resellLinks?.stockX {
+                                                Link(destination: URL(string: link)!) {
+                                                    Image(systemName: "arrow.up.right.square.fill")
+                                                        .foregroundColor(.black.opacity(0.5))
+                                                        .font(.system(size: 18))
+                                                }
+                                            }
                                         }
                                         
-                                        if let goat = lowestResell.goat {
-                                            Divider().padding(.leading, 16)
-                                            ModernPriceRow(site: "GOAT", price: goat, link: sneaker.resellLinks?.goat)
-                                        }
-                                        
-                                        if let fc = lowestResell.flightClub {
-                                            Divider().padding(.leading, 16)
-                                            ModernPriceRow(site: "Flight Club", price: fc, link: sneaker.resellLinks?.flightClub)
-                                        }
-                                        
-                                        if let sg = lowestResell.stadiumGoods {
-                                            Divider().padding(.leading, 16)
-                                            ModernPriceRow(site: "Stadium Goods", price: sg, link: sneaker.resellLinks?.stadiumGoods)
+                                        HStack(spacing: 16) {
+                                            // Min Price
+                                            if let minPrice = sneaker.stockXMinPrice {
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Lowest Ask")
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(.secondary)
+                                                    Text("$\(minPrice)")
+                                                        .font(.system(size: 20, weight: .bold))
+                                                        .foregroundColor(.green)
+                                                }
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            }
+                                            
+                                            // Max Price
+                                            if let maxPrice = sneaker.stockXMaxPrice {
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Highest Ask")
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(.secondary)
+                                                    Text("$\(maxPrice)")
+                                                        .font(.system(size: 20, weight: .bold))
+                                                        .foregroundColor(.red.opacity(0.8))
+                                                }
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            }
                                         }
                                     }
+                                    .padding()
                                     .background(Color.white)
+                                    .cornerRadius(12)
+                                }
+                                
+                                // GOAT Size-Specific Pricing
+                                if !sneaker.resellPrices.isEmpty {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        HStack {
+                                            Text("GOAT")
+                                                .font(.system(size: 15, weight: .semibold))
+                                            Spacer()
+                                            if let link = sneaker.resellLinks?.goat {
+                                                Link(destination: URL(string: link)!) {
+                                                    Image(systemName: "arrow.up.right.square.fill")
+                                                        .foregroundColor(.black.opacity(0.5))
+                                                        .font(.system(size: 18))
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Size Selector Component
+                                        SizePriceSelector(
+                                            resellPrices: sneaker.resellPrices,
+                                            userShoeSize: authManager.currentUser?.shoeSize
+                                        )
+                                    }
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(12)
+                                } else if sneaker.stockXMinPrice == nil && sneaker.stockXMaxPrice == nil && sneaker.resellPrices.isEmpty {
+                                    // No pricing available from either source
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text("Resale Pricing")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                Text("Not Available")
+                                                    .font(.system(size: 16, weight: .medium))
+                                                    .foregroundColor(.orange)
+                                            }
+                                            Spacer()
+                                            Image(systemName: "exclamationmark.circle")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.orange.opacity(0.6))
+                                        }
+                                        
+                                        // Show link to visit website
+                                        if let link = sneaker.source == .stockx ? sneaker.resellLinks?.stockX : sneaker.resellLinks?.goat {
+                                            Link(destination: URL(string: link)!) {
+                                                HStack {
+                                                    Text("Visit \(sneaker.source == .stockx ? "StockX" : "GOAT") for pricing")
+                                                        .font(.system(size: 14, weight: .medium))
+                                                        .foregroundColor(.blue)
+                                                    Image(systemName: "arrow.up.right")
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(.blue)
+                                                }
+                                            }
+                                            .padding(.top, 4)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(Color.orange.opacity(0.1))
                                     .cornerRadius(12)
                                 }
                             }
@@ -268,72 +356,72 @@ struct SneakerDetailView: View {
 
 // Modern Price Row Component
 struct ModernPriceRow: View {
-    let site: String
-    let price: Int
-    let link: String?
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(site)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
-                Text("Lowest Ask")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
+            let site: String
+            let price: Int
+            let link: String?
             
-            Spacer()
-            
-            Text("$\(price)")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.black)
-            
-            if let link = link, let url = URL(string: link) {
-                Link(destination: url) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.blue)
-                        .padding(8)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
+            var body: some View {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(site)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary)
+                        Text("Lowest Ask")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("$\(price)")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.black)
+                    
+                    if let link = link, let url = URL(string: link) {
+                        Link(destination: url) {
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.blue)
+                                .padding(8)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-    }
-}
-
+        
 // Detail Row Helper Component
 struct DetailRow: View {
-    let icon: String
-    let label: String
-    let value: String
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.black.opacity(0.6))
-                .frame(width: 24)
+            let icon: String
+            let label: String
+            let value: String
             
-            Text(label)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-            
-            Spacer()
-            
-            Text(value)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.primary)
+            var body: some View {
+                HStack(spacing: 12) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16))
+                        .foregroundColor(.black.opacity(0.6))
+                        .frame(width: 24)
+                    
+                    Text(label)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Text(value)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                }
+                .padding()
+                .background(Color.white)
+                .cornerRadius(12)
+            }
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-    }
-}
-
+        
 class SneakerDetailViewModel: ObservableObject {
     @Published var sneaker: Sneaker?
     @Published var isLoading = false
@@ -341,11 +429,13 @@ class SneakerDetailViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     let styleID: String
+    let source: String
     private let apiService = SneakAPIService.shared
     private let db = DatabaseManager.shared
     
-    init(styleID: String) {
+    init(styleID: String, source: String = "stockx") {
         self.styleID = styleID
+        self.source = source
     }
     
     func loadSneaker(userId: String) {
@@ -355,24 +445,29 @@ class SneakerDetailViewModel: ObservableObject {
         // Check if liked
         isLiked = db.isLiked(styleID: styleID, userId: userId)
         
-        // Using mock data for now
-        // DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-        //     self.sneaker = self.apiService.getMockSneakerDetail(styleID: self.styleID)
-        //     self.isLoading = false
-        // }
+        print("🔄 Loading sneaker details for: \(styleID) from \(source)")
         
-        // TODO: Replace with actual API call when backend is ready
         Task {
             do {
-                let sneaker = try await apiService.getProductPrices(styleID: styleID, source: "stockx")
+                let sneaker: Sneaker
+                
+                // Call the appropriate API based on source
+                if source == "stockx" {
+                    sneaker = try await apiService.getStockXProduct(slug: styleID)
+                } else {
+                    // source == "goat"
+                    sneaker = try await apiService.getGoatProduct(slug: styleID)
+                }
+                
                 await MainActor.run {
+                    print("✅ Successfully loaded sneaker: \(sneaker.shoeName)")
                     self.sneaker = sneaker
                     self.isLoading = false
                 }
             } catch {
-                print("Error loading sneaker: \(error)")
+                print("❌ Error loading sneaker: \(error)")
                 await MainActor.run {
-                    self.errorMessage = "Unable to load sneaker details. Please try again."
+                    self.errorMessage = "Unable to load sneaker details. Please visit the website to view this product."
                     self.isLoading = false
                 }
             }
@@ -383,12 +478,165 @@ class SneakerDetailViewModel: ObservableObject {
         isLiked = db.toggleLike(styleID: styleID, userId: userId)
     }
 }
-
-struct SneakerDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationView {
-            SneakerDetailView(styleID: "FY2903")
-                .environmentObject(AuthManager())
+        
+// MARK: - Size Price Selector Component
+        
+struct SizePriceSelector: View {
+            let resellPrices: [String: [String: Int]]
+            let userShoeSize: String?
+            
+            @State private var searchSize: String = ""
+            @State private var showingAllSizes = true
+            
+            // Sort sizes numerically
+            private var sortedSizes: [(String, Int)] {
+                let sizePrice = resellPrices.compactMap { (size, prices) -> (String, Int)? in
+                    guard let goatPrice = prices["goat"] else { return nil }
+                    return (size, goatPrice)
+                }
+                
+                return sizePrice.sorted { first, second in
+                    // Try to convert to Double for numeric sorting
+                    if let num1 = Double(first.0), let num2 = Double(second.0) {
+                        return num1 < num2
+                    }
+                    // Fallback to string comparison
+                    return first.0 < second.0
+                }
+            }
+            
+            // Filtered sizes based on search
+            private var filteredSizes: [(String, Int)] {
+                if searchSize.isEmpty {
+                    return sortedSizes
+                }
+                return sortedSizes.filter { $0.0.contains(searchSize) }
+            }
+            
+            var body: some View {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Show user's size info if available
+                    if let userSize = userShoeSize {
+                        HStack {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.orange)
+                            Text("Your size: US \(userSize)")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                    
+                    // Search bar for size
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 14))
+                        
+                        TextField("Search size...", text: $searchSize)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 14))
+                            .keyboardType(.decimalPad)
+                        
+                        if !searchSize.isEmpty {
+                            Button(action: { searchSize = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray.opacity(0.6))
+                                    .font(.system(size: 14))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.gray.opacity(0.05))
+                    .cornerRadius(8)
+                    
+                    // Sizes list with ScrollViewReader to scroll to user's size
+                    if filteredSizes.isEmpty {
+                        Text("No sizes found")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 20)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    } else {
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(spacing: 8) {
+                                    ForEach(filteredSizes, id: \.0) { size, price in
+                                        SizePriceRow(
+                                            size: size,
+                                            price: price,
+                                            isUserSize: size == userShoeSize
+                                        )
+                                        .id(size) // Add ID for scrolling
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .frame(maxHeight: 300)
+                            .onAppear {
+                                // Scroll to user's size when view appears
+                                if let userSize = userShoeSize {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        withAnimation {
+                                            proxy.scrollTo(userSize, anchor: .center)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-    }
-}
+        
+// MARK: - Size Price Row Component
+        
+struct SizePriceRow: View {
+            let size: String
+            let price: Int
+            let isUserSize: Bool
+            
+            var body: some View {
+                HStack {
+                    // Size
+                    Text("US \(size)")
+                        .font(.system(size: 15, weight: isUserSize ? .semibold : .regular))
+                        .foregroundColor(isUserSize ? .white : .primary)
+                    
+                    if isUserSize {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white)
+                    }
+                    
+                    Spacer()
+                    
+                    // Price
+                    Text("$\(price)")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(isUserSize ? .white : .black)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isUserSize ? Color.black : Color.gray.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isUserSize ? Color.black : Color.clear, lineWidth: 2)
+                )
+            }
+        }
+        
+struct SneakerDetailView_Previews: PreviewProvider {
+            static var previews: some View {
+                NavigationView {
+                    SneakerDetailView(styleID: "FY2903")
+                        .environmentObject(AuthManager())
+                }
+            }
+        }

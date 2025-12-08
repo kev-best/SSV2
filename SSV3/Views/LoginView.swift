@@ -45,7 +45,7 @@ struct LoginView: View {
                     // Username field
                     HStack {
                         Image(systemName: "person.fill")
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white)
                             .frame(width: 30)
                         
                         TextField("Username", text: $username)

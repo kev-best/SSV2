@@ -1,63 +1,68 @@
-//
-//  DatabaseManager.swift
-//  SoleSociety
-//
-
 import Foundation
 
 class DatabaseManager {
     static let shared = DatabaseManager()
     
-    private let usersKey = "sole_society_users"
-    private let currentUserKey = "sole_society_current_user"
+    private let currentUserKey = "current_user_id"
+    private var users: [User] = []
     
     private init() {
-        // Initialize with some mock users if none exist
-        if getUsers().isEmpty {
+        // Load saved users on init
+        users = PersistenceManager.shared.loadUsers()
+        
+        // Initialize with mock data if no users exist
+        if users.isEmpty {
             initializeMockData()
         }
     }
     
-    // MARK: - User Management
+    // MARK: - Private Helper Methods
     
-    func getUsers() -> [User] {
-        guard let data = UserDefaults.standard.data(forKey: usersKey),
-              let users = try? JSONDecoder().decode([User].self, from: data) else {
-            return []
-        }
+    /// Whenever users change, save them
+    private func saveChanges() {
+        PersistenceManager.shared.saveUsers(users)
+    }
+    
+    /// Get all users (helper method for compatibility)
+    private func getUsers() -> [User] {
         return users
     }
     
-    func saveUsers(_ users: [User]) {
-        if let data = try? JSONEncoder().encode(users) {
-            UserDefaults.standard.set(data, forKey: usersKey)
-        }
+    /// Save users (helper method for compatibility)
+    private func saveUsers(_ users: [User]) {
+        self.users = users
+        saveChanges()
     }
     
-    func createUser(username: String, password: String) -> User? {
-        var users = getUsers()
-        
-        // Check if username already exists
-        if users.contains(where: { $0.username.lowercased() == username.lowercased() }) {
-            return nil
+    // MARK: - User Management
+    
+    func createUser(_ user: User) -> Bool {
+        guard !users.contains(where: { $0.username == user.username }) else {
+            return false
         }
-        
-        let newUser = User(username: username, password: password)
-        users.append(newUser)
-        saveUsers(users)
-        return newUser
+        users.append(user)
+        saveChanges()
+        return true
+    }
+    
+    func getUser(username: String, password: String) -> User? {
+        return users.first { $0.username.lowercased() == username.lowercased() && $0.password == password }
+    }
+    
+    func getUserById(_ id: String) -> User? {
+        return users.first { $0.id == id }
     }
     
     func authenticateUser(username: String, password: String) -> User? {
-        let users = getUsers()
         return users.first { $0.username.lowercased() == username.lowercased() && $0.password == password }
     }
+    
+    // MARK: - Current User Session Management
     
     func getCurrentUser() -> User? {
         guard let userId = UserDefaults.standard.string(forKey: currentUserKey) else {
             return nil
         }
-        let users = getUsers()
         return users.first { $0.id == userId }
     }
     
@@ -72,25 +77,21 @@ class DatabaseManager {
     // MARK: - Liked Sneakers Management
     
     func toggleLike(styleID: String, userId: String) -> Bool {
-        var users = getUsers()
         guard let index = users.firstIndex(where: { $0.id == userId }) else {
             return false
         }
         
-        var user = users[index]
-        if user.likedSneakerStyleIDs.contains(styleID) {
-            user.likedSneakerStyleIDs.removeAll { $0 == styleID }
+        if users[index].likedSneakerStyleIDs.contains(styleID) {
+            users[index].likedSneakerStyleIDs.removeAll { $0 == styleID }
         } else {
-            user.likedSneakerStyleIDs.append(styleID)
+            users[index].likedSneakerStyleIDs.append(styleID)
         }
         
-        users[index] = user
-        saveUsers(users)
-        return user.likedSneakerStyleIDs.contains(styleID)
+        saveChanges()
+        return users[index].likedSneakerStyleIDs.contains(styleID)
     }
     
     func isLiked(styleID: String, userId: String) -> Bool {
-        let users = getUsers()
         guard let user = users.first(where: { $0.id == userId }) else {
             return false
         }
@@ -98,21 +99,33 @@ class DatabaseManager {
     }
     
     func getLikedStyleIDs(userId: String) -> [String] {
-        let users = getUsers()
         guard let user = users.first(where: { $0.id == userId }) else {
             return []
         }
         return user.likedSneakerStyleIDs
     }
     
+    // MARK: - User Preferences
+    
+    func updateShoeSize(userId: String, size: String) {
+        guard let index = users.firstIndex(where: { $0.id == userId }) else {
+            return
+        }
+        users[index].shoeSize = size
+        saveChanges()
+    }
+    
+    func getShoeSize(userId: String) -> String? {
+        return users.first(where: { $0.id == userId })?.shoeSize
+    }
+    
     // MARK: - Mock Data
     
     private func initializeMockData() {
-        var testUser = User(username: "demo", password: "password")
+        var testUser = User(username: "demo", password: "password", shoeSize: "10")
         testUser.likedSneakerStyleIDs = ["FY2903", "FY4176"]
         
-        let users = [testUser]
-        saveUsers(users)
+        users = [testUser]
+        saveChanges()
     }
 }
-
