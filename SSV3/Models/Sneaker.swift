@@ -45,7 +45,6 @@ struct Sneaker: Identifiable {
 }
 
 // For API search results that don't have full details
-// SneakerSearchResult.swift (or wherever you defined it)
 struct SneakerSearchResult: Identifiable {
     var id: String { styleID }
     let styleID: String // Maps to slug

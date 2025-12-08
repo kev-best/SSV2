@@ -1,11 +1,3 @@
-//
-//  PersistenceManager.swift
-//  SSV3
-//
-//  Created by csuftitan on 12/6/25.
-//
-
-
 import Foundation
 
 class PersistenceManager {

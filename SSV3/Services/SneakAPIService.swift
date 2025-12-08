@@ -16,12 +16,15 @@ final class SneakAPIService {
 
     // MARK: - DTOs that match Kicks.dev API responses
 
-    // List wrapper
+    
+    
+    
+    // MARK: - List wrapper
     struct ListResponse<T: Decodable>: Decodable {
         let data: [T]
     }
 
-    // Detail wrapper
+    // MARK: - Detail wrapper
     struct DetailResponse<T: Decodable>: Decodable {
         let data: T
     }
@@ -43,6 +46,8 @@ final class SneakAPIService {
         let description: String?
         let productType: String?
         let gender: String?
+        let secondaryCategory: String?
+        let categories: [String]?
         
         // GOAT fields (when applicable)
         let name: String?
@@ -53,6 +58,7 @@ final class SneakAPIService {
         let retailPrices: RetailPricesDTO?
         let releaseDate: String?
         
+        // MARK: CodingKeys API repsonse
         enum CodingKeys: String, CodingKey {
             case slug, id, title, model, brand, category, gallery, image, link, description
             case minPrice  // decoder's convertFromSnakeCase handles min_price -> minPrice
@@ -60,6 +66,8 @@ final class SneakAPIService {
             case avgPrice  // decoder's convertFromSnakeCase handles avg_price -> avgPrice
             case productType  // decoder's convertFromSnakeCase handles product_type -> productType
             case gender
+            case secondaryCategory  // decoder's convertFromSnakeCase handles secondary_category -> secondaryCategory
+            case categories
             case name, colorway, images
             case imageUrl  // decoder's convertFromSnakeCase handles image_url -> imageUrl
             case variants
@@ -67,7 +75,8 @@ final class SneakAPIService {
             case releaseDate  // decoder's convertFromSnakeCase handles release_date -> releaseDate
         }
         
-        // Custom decoding to handle both String and Int IDs from different APIs
+        // MARK: Custom decoding
+        // to handle both String and Int IDs from different APIs
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             
@@ -118,6 +127,8 @@ final class SneakAPIService {
             self.description = try? container.decode(String.self, forKey: .description)
             self.productType = try? container.decode(String.self, forKey: .productType)
             self.gender = try? container.decode(String.self, forKey: .gender)
+            self.secondaryCategory = try? container.decode(String.self, forKey: .secondaryCategory)
+            self.categories = try? container.decode([String].self, forKey: .categories)
             self.name = try? container.decode(String.self, forKey: .name)
             self.colorway = try? container.decode(String.self, forKey: .colorway)
             self.images = try? container.decode([String].self, forKey: .images)
@@ -127,51 +138,48 @@ final class SneakAPIService {
             self.releaseDate = try? container.decode(String.self, forKey: .releaseDate)
         }
         
-        // Helper to determine if this is a sneaker/shoe product
+        // MARK: Search Feature
+        // Helper to determine if this is a footwear product (shoes, sneakers, boots, sandals, etc.)
         func isSneaker() -> Bool {
+            // Convert to lowercase for case-insensitive comparison
             let productTypeLower = (productType ?? "").lowercased()
-            let nameLower = (name ?? title ?? "").lowercased()
             let categoryLower = (category ?? "").lowercased()
+            let categoriesArray = (categories ?? []).map { $0.lowercased() }
             
-            // Exclude non-sneaker items
-            let excludedTypes = ["apparel", "clothing", "hoodie", "jacket", "shirt", "pants",
-                               "shorts", "accessories", "bag", "hat", "cap"]
-            let excludedKeywords = ["hoodie", "jacket", "fleece", "windrunner", "crewneck",
-                                   "sweatshirt", "tee", "t-shirt", "pants", "shorts"]
+            // StockX filtering: Check product_type OR categories array
+            // Accept: "sneakers", "shoes", or categories containing "sneakers"
+            let isStockXFootwear = productTypeLower == "sneakers" || 
+                                   productTypeLower == "shoes" ||
+                                   categoriesArray.contains("sneakers") ||
+                                   categoriesArray.contains("shoes")
             
-            // Check if it's explicitly marked as sneakers
-            if productTypeLower == "sneakers" || productTypeLower == "shoes" {
-                return true
+            // GOAT filtering: Check category OR product_type
+            // Accept: category == "shoes" OR product_type == "sneakers"
+            let isGoatFootwear = categoryLower == "shoes" || 
+                                productTypeLower == "sneakers"
+            
+            // Additional footwear keywords to catch boots, sandals, slides, etc.
+            let footwearKeywords = ["boot", "sandal", "slide", "slipper", "clog", 
+                                   "mule", "loafer", "oxford", "derby", "monk",
+                                   "sneaker", "trainer", "runner", "basketball",
+                                   "football", "soccer", "skate", "tennis"]
+            
+            let hasFootwearKeyword = footwearKeywords.contains { keyword in
+                productTypeLower.contains(keyword) || 
+                categoryLower.contains(keyword) ||
+                categoriesArray.contains { $0.contains(keyword) }
             }
             
-            // Exclude if product type matches excluded categories
-            for excluded in excludedTypes {
-                if productTypeLower.contains(excluded) {
-                    return false
-                }
+            // Return true if any footwear condition is met
+            let isFootwear = isStockXFootwear || isGoatFootwear || hasFootwearKeyword
+            
+            // Log filtering for debugging
+            if !isFootwear {
+                let name = self.name ?? self.title ?? "Unknown"
+                print("🚫 Filtered out non-footwear: '\(name)' (productType: '\(productType ?? "nil")', category: '\(category ?? "nil")', categories: \(categories ?? []))")
             }
             
-            // Exclude if name contains non-shoe keywords
-            for keyword in excludedKeywords {
-                if nameLower.contains(keyword) {
-                    return false
-                }
-            }
-            
-            // Include common shoe categories
-            let shoeKeywords = ["air", "jordan", "dunk", "force", "yeezy", "boost",
-                              "slide", "sandal", "trainer", "runner", "sneaker",
-                              "shoe", "foamposite", "react", "zoom"]
-            
-            for keyword in shoeKeywords {
-                if nameLower.contains(keyword) || categoryLower.contains(keyword) {
-                    return true
-                }
-            }
-            
-            // Default: assume it's a sneaker if we can't determine otherwise
-            // (API is primarily for sneakers)
-            return !nameLower.isEmpty
+            return isFootwear
         }
         
         // Helper to check if product has pricing data
@@ -207,6 +215,7 @@ final class SneakAPIService {
         }
     }
     
+    // MARK: VariantDTO
     struct VariantDTO: Decodable {
         let size: String?
         let lowestAsk: Int?

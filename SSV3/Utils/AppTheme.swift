@@ -1,10 +1,3 @@
-//
-//  AppTheme.swift
-//  SSV3
-//
-//  App-wide color theme and styling constants
-//
-
 import SwiftUI
 
 /// App theme colors based on the SoleSociety brand

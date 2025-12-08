@@ -1,18 +1,3 @@
-//
-//  Config.swift
-//  SSV3
-//
-//  Created by csuftitan on 12/6/25.
-//
-
-
-//
-//  Config.swift
-//  SoleSociety
-//
-//  Configuration file for API keys and app settings
-//
-
 import Foundation
 
 enum Config {
@@ -48,11 +33,3 @@ enum Config {
     static let defaultBrandLimit = 10
     static let maxRetries = 3
 }
-
-// MARK: - Usage Example
-/*
- In SneakAPIService.swift:
- 
- private let apiKey = Config.kicksAPIKey
- private let baseURL = URL(string: Config.kicksAPIBaseURL)!
- */

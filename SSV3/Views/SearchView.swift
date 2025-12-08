@@ -275,7 +275,7 @@ struct SearchView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 50))
                 .foregroundColor(AppTheme.primaryTan.opacity(0.5))
-            Text("No results found")
+            Text("No shoes found")
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(AppTheme.textSecondaryOnLight)
             Text("Try different keywords")
